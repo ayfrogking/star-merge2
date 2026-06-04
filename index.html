@@ -1029,21 +1029,23 @@
     color: #fff; font-size: 12px; cursor: pointer;
   }
   .rk-account .acc-logout:active { transform: scale(0.97); }
-  /* 랭킹 티어 배지 */
-  .rk-tier {
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 11px; line-height: 1; padding: 2px 5px; border-radius: 7px;
-    margin-right: 5px; vertical-align: middle;
-    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+  /* 랭킹 티어 배지 (이름 + 색상) */
+  .rk-name-text { font-weight: 600; }
+  .rk-subline { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+  .rk-sub-text { font-size: 11px; opacity: 0.6; }
+  .rk-tierbadge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; font-weight: 800; line-height: 1;
+    padding: 3px 7px; border-radius: 8px; white-space: nowrap;
   }
-  .rk-tier.t-iron     { background: rgba(134,142,150,0.28); }
-  .rk-tier.t-bronze   { background: rgba(205,127,50,0.32); }
-  .rk-tier.t-silver   { background: rgba(200,200,200,0.32); }
-  .rk-tier.t-gold     { background: rgba(255,215,0,0.30); }
-  .rk-tier.t-platinum { background: rgba(220,240,255,0.30); }
-  .rk-tier.t-emerald  { background: rgba(80,200,120,0.30); }
-  .rk-tier.t-diamond  { background: rgba(185,242,255,0.35); }
-  .rk-tier.t-master   { background: linear-gradient(135deg, rgba(255,20,147,0.4), rgba(156,39,176,0.4)); border-color: rgba(255,20,147,0.5); }
+  .rk-tierbadge.tb-iron     { background: linear-gradient(135deg,#495057,#868e96); color:#fff; }
+  .rk-tierbadge.tb-bronze   { background: linear-gradient(135deg,#7f4f1a,#cd7f32); color:#fff; }
+  .rk-tierbadge.tb-silver   { background: linear-gradient(135deg,#8a8a8a,#d8d8d8); color:#1a1a1a; }
+  .rk-tierbadge.tb-gold     { background: linear-gradient(135deg,#c89400,#ffd700); color:#1a1a1a; }
+  .rk-tierbadge.tb-platinum { background: linear-gradient(135deg,#a8c0c8,#e5f4f8); color:#1a1a1a; }
+  .rk-tierbadge.tb-emerald  { background: linear-gradient(135deg,#1e8449,#50c878); color:#fff; }
+  .rk-tierbadge.tb-diamond  { background: linear-gradient(135deg,#4dc8e8,#b9f2ff); color:#0a3a4a; }
+  .rk-tierbadge.tb-master   { background: linear-gradient(135deg,#ff1493,#9c27b0,#4b0082); color:#fff; box-shadow:0 0 8px rgba(255,20,147,0.5); }
 </style>
 </head>
 <body>
@@ -1194,7 +1196,7 @@
   <div class="modal-overlay" id="confirmMainModal">
     <div class="modal" style="text-align:center;">
       <h3 style="color:#FF6B6B;" data-i18n="confirmTitle">⚠ 정말 나가시겠어요?</h3>
-      <p data-i18n="confirmBody" style="margin:12px 0; line-height:1.6;">메인 화면으로 돌아가면 현재 게임이 초기화되고 점수가 사라집니다.</p>
+      <p data-i18n="confirmBody" style="margin:12px 0; line-height:1.6;">메인으로 나가면 현재 게임은 종료됩니다. 현재 점수는 랭킹에 등록된 뒤 메인 화면으로 이동해요.</p>
       <div style="display:flex; gap:8px; margin-top:16px;">
         <button class="menu-btn" id="cancelMainBtn" style="flex:1;" data-i18n="cancel">취소</button>
         <button class="menu-btn primary" id="confirmMainBtn" style="flex:1; background: linear-gradient(135deg,#FF6B6B,#C62828); color:#fff;" data-i18n="confirmYes">나가기</button>
@@ -1379,7 +1381,7 @@ const I18N = {
     soundLabel: '사운드',
     gotoMain: '메인 화면으로',
     confirmTitle: '⚠ 정말 나가시겠어요?',
-    confirmBody: '메인 화면으로 돌아가면 현재 게임이 초기화되고 점수가 사라집니다.',
+    confirmBody: '메인으로 나가면 현재 게임은 종료됩니다. 현재 점수는 랭킹에 등록된 뒤 메인 화면으로 이동해요.',
     cancel: '취소',
     confirmYes: '나가기',
     clearTitle: '🎉 클리어!',
@@ -1587,7 +1589,7 @@ const I18N = {
     soundLabel: 'Sound',
     gotoMain: 'Back to Main',
     confirmTitle: '⚠ Quit current game?',
-    confirmBody: 'Going back to the main menu will reset your current game and score.',
+    confirmBody: 'Leaving ends the current game. Your current score is submitted to the ranking, then you return to the main menu.',
     cancel: 'Cancel',
     confirmYes: 'Quit',
     clearTitle: '🎉 Cleared!',
@@ -1776,10 +1778,10 @@ const ACH_POINTS = {
   hardClear: 500,
   // 매우 어려움
   streak28: 800,
-  collector: 750,
-  speedrunMaster: 800,
-  hellClear: 900,
-  allCleared: 1000,
+  collector: 650,
+  speedrunMaster: 600,
+  hellClear: 700,
+  allCleared: 800,
   // === V2 추가 업적 점수 ===
   firstGameOver: 50,
   carefulType: 100,
@@ -1797,12 +1799,12 @@ const ACH_POINTS = {
   library: 350,
   cultist: 400,
   turtleX3: 500,
-  day24: 500,
+  day24: 300,
   minimalist: 500,
-  starFall: 700,
-  mergeMania: 700,
-  millionScore: 800,
-  trueVeteran: 900,
+  starFall: 600,
+  mergeMania: 600,
+  millionScore: 600,
+  trueVeteran: 700,
   anniversary: 1200,    // 꾸준함 계열 — 후하게 상향
   // === 신규 추가 업적 점수 ===
   blackholeMaster: 250, // 블랙홀로 큰곰+ 제거
@@ -1817,8 +1819,8 @@ const ACH_POINTS = {
   rankTop1: 700,        // 1위 (매우 어려움)
 };
 
-// 티어 정의 (낮은 → 높은 순) — 신규 업적 + 랭킹 업적 추가로 임계값 기준 (총합 ~25,400)
-//   diamond(19000)은 전체의 약 75% — 마스터(전 업적 해금) 직전 최고 수치 티어
+// 티어 정의 (낮은 → 높은 순) — 총합 23,900 유지 (랭킹 업적 추가분만큼 고난도 업적 하향)
+//   diamond(19000)은 전체의 약 80% — 마스터(전 업적 해금) 직전 최고 수치 티어
 const TIER_LEVELS = [
   { id: 'iron',     icon: '⚙',  minPts: 0      },
   { id: 'bronze',   icon: '🥉', minPts: 1000   },
@@ -4517,6 +4519,8 @@ const RT_STR = {
     loginHint: '구글로 로그인하면 다른 기기에서도 기록·순위·프로필이 유지돼요. (선택)',
     googleLogin: 'Google로 로그인', logout: '로그아웃',
     loginDone: '✓ 로그인되었습니다', loginFail: '로그인에 실패했어요', logoutDone: '로그아웃되었습니다',
+    inAppBrowser: '⚠ 카카오톡 등 앱 내 브라우저에서는 구글 로그인이 막혀요. 아래 버튼으로 Chrome/Safari에서 열어주세요.',
+    openExternal: '🌐 외부 브라우저로 열기',
   },
   en: {
     profileTitleNew: 'Set Profile', profileTitleEdit: 'Edit Profile',
@@ -4546,6 +4550,8 @@ const RT_STR = {
     loginHint: 'Sign in with Google to keep your records, rank & profile across devices. (optional)',
     googleLogin: 'Sign in with Google', logout: 'Sign out',
     loginDone: '✓ Signed in', loginFail: 'Sign-in failed', logoutDone: 'Signed out',
+    inAppBrowser: '⚠ In-app browsers (KakaoTalk, etc.) block Google sign-in. Use the button below to open in Chrome/Safari.',
+    openExternal: '🌐 Open in browser',
   }
 };
 function rt(k) { const m = RT_STR[currentLang] || RT_STR.ko; return (k in m) ? m[k] : RT_STR.ko[k]; }
@@ -4997,13 +5003,35 @@ function renderAccountSection() {
     el.innerHTML = `<div class="acc-status"><span class="acc-email">✓ ${rkEscape(info.email || info.name || '')}</span>` +
       `<button class="acc-logout" id="accLogoutBtn">${rt('logout')}</button></div>`;
     document.getElementById('accLogoutBtn').addEventListener('click', onLogout);
+  } else if (isInAppBrowser()) {
+    // 앱 내 브라우저(카카오톡 등): 구글 로그인 차단 → 외부 브라우저 안내
+    el.innerHTML = `<div class="acc-hint">${rt('inAppBrowser')}</div>` +
+      `<button class="rk-gbtn" id="accExtBtn">${rt('openExternal')}</button>`;
+    document.getElementById('accExtBtn').addEventListener('click', openExternalBrowser);
   } else {
     el.innerHTML = `<div class="acc-hint">${rt('loginHint')}</div>` +
       `<button class="rk-gbtn" id="accLoginBtn">🔵 ${rt('googleLogin')}</button>`;
     document.getElementById('accLoginBtn').addEventListener('click', onGoogleLogin);
   }
 }
+// 앱 내 브라우저 감지 (구글 OAuth 차단 대상)
+function isInAppBrowser() {
+  const ua = (navigator.userAgent || '').toLowerCase();
+  return /kakaotalk|fban|fbav|fb_iab|instagram|line\/|naver\(inapp|; wv\)|everytimeapp|daumapps|band/.test(ua);
+}
+function openExternalBrowser() {
+  const ua = (navigator.userAgent || '').toLowerCase();
+  const url = location.href;
+  if (ua.includes('kakaotalk')) {
+    location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);
+  } else if (ua.includes('line')) {
+    location.href = url + (url.includes('?') ? '&' : '?') + 'openExternalBrowser=1';
+  } else {
+    showRankToast(rt('inAppBrowser'));
+  }
+}
 async function onGoogleLogin() {
+  if (isInAppBrowser()) { openExternalBrowser(); return; }
   try {
     await RankingAPI.signInWithGoogle();
     // 클라우드에 프로필이 있으면 불러오고(타 기기 사용자), 없으면 현재 프로필 업로드(첫 로그인)
@@ -5059,21 +5087,25 @@ function tierIconOf(id) {
   const tl = (typeof TIER_LEVELS !== 'undefined') ? TIER_LEVELS.find(x => x.id === id) : null;
   return tl ? tl.icon : '';
 }
-function tierChipHTML(id) {
-  const ic = tierIconOf(id);
-  if (!ic) return '';
-  const label = (typeof t === 'function') ? (t('tierName_' + id) || id) : id;
-  return `<span class="rk-tier t-${id}" title="${rkEscape(label)}">${ic}</span>`;
+// 티어 이름+색상 배지 (정보 없으면 아이언으로 기본 표시 → 모든 줄 일관)
+function tierBadgeMini(id) {
+  const tid = (typeof TIER_LEVELS !== 'undefined' && TIER_LEVELS.some(x => x.id === id)) ? id : 'iron';
+  const icon = tierIconOf(tid);
+  const name = (typeof t === 'function') ? (t('tierName_' + tid) || tid) : tid;
+  return `<span class="rk-tierbadge tb-${tid}">${icon} ${rkEscape(name)}</span>`;
 }
-function rkRowHTML(rank, flag, name, sub, score, isMe, idx, tier) {
+function rkRowHTML(rank, flag, name, sub, score, isMe, idx, tier, showTier) {
   const cls = ['rk-row'];
   if (isMe) cls.push('me');
   if (rank === 1) cls.push('top1'); else if (rank === 2) cls.push('top2'); else if (rank === 3) cls.push('top3');
   const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
   const rankCell = medal ? `<div class="rk-rank"><span class="rk-medal">${medal}</span></div>` : `<div class="rk-rank">${rank}</div>`;
-  const subHTML = sub ? `<div class="rk-sub">${rkEscape(sub)}</div>` : '';
+  const parts = [];
+  if (showTier) parts.push(tierBadgeMini(tier));
+  if (sub) parts.push(`<span class="rk-sub-text">${rkEscape(sub)}</span>`);
+  const subHTML = parts.length ? `<div class="rk-subline">${parts.join('')}</div>` : '';
   return `<div class="${cls.join(' ')}" style="--i:${idx || 0}">${rankCell}<div class="rk-flag">${flag || '🏳️'}</div>` +
-         `<div class="rk-name">${tierChipHTML(tier)}${rkEscape(name)}${subHTML}</div><div class="rk-score">${rkFmt(score)}</div></div>`;
+         `<div class="rk-name"><span class="rk-name-text">${rkEscape(name)}</span>${subHTML}</div><div class="rk-score">${rkFmt(score)}</div></div>`;
 }
 async function renderRankingBody() {
   document.getElementById('rankingTitle').textContent = rt('rankingTitle');
@@ -5101,8 +5133,8 @@ async function renderPersonalRanking() {
   if (me.rank) {
     const e = me.entry;
     html += `<div class="rk-mystat"><div class="ms-rank">${me.rank}<small>${rt('rankWord')}</small></div>` +
-      `<div class="ms-flag">${e.flag || '🏳️'}</div><div class="ms-info"><div class="ms-name">${tierChipHTML(e.tier)}${rkEscape(e.name)}</div>` +
-      `${e.school ? `<div class="ms-sub">${rkEscape(e.school)}</div>` : ''}</div>` +
+      `<div class="ms-flag">${e.flag || '🏳️'}</div><div class="ms-info"><div class="ms-name">${rkEscape(e.name)}</div>` +
+      `<div class="ms-sub">${tierBadgeMini(e.tier)}${e.school ? ' ' + rkEscape(e.school) : ''}</div></div>` +
       `<div class="ms-score">${rkFmt(e.score)}</div></div>`;
   } else {
     html += `<div class="rk-mystat empty"><div class="ms-msg">${rt('noMyRecord')}</div></div>`;
@@ -5112,7 +5144,7 @@ async function renderPersonalRanking() {
     html += `<div class="rk-empty">${rt('noRank')}</div>`;
   } else {
     html += `<div class="rk-list">`;
-    top.forEach((e, i) => { html += rkRowHTML(i + 1, e.flag, e.name, e.school, e.score, e.uid === uid, i, e.tier); });
+    top.forEach((e, i) => { html += rkRowHTML(i + 1, e.flag, e.name, e.school, e.score, e.uid === uid, i, e.tier, true); });
     html += `</div><div class="rk-count">${rt('totalPlayers')(me.total)}</div>`;
   }
   html += `<div class="rk-mock">${rt('mockNote')}</div>`;
