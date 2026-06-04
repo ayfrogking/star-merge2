@@ -313,18 +313,20 @@
     z-index: 2;
   }
   .menu-btns {
-    display: flex; flex-direction: column;
-    gap: 10px; width: min(280px, 80vw);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px; width: min(340px, 88vw);
     z-index: 2;
   }
+  .menu-btns .menu-btn.primary { grid-column: 1 / -1; }
   .menu-btn {
-    padding: 14px 20px;
+    padding: 13px 10px;
     border: 1px solid rgba(255,255,255,0.25);
     border-radius: 12px;
     background: linear-gradient(135deg, rgba(74,20,140,0.7), rgba(26,35,126,0.7));
     color: #fff;
-    font-size: 16px; font-weight: 600;
-    cursor: pointer;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; text-align: center;
     transition: transform 0.1s, background 0.2s;
     backdrop-filter: blur(10px);
   }
@@ -799,8 +801,8 @@
     .achievement-item .ach-name { font-size: 15px; }
     .achievement-item .ach-desc { font-size: 13px; }
 
-    .menu-btn { font-size: 16px; padding: 16px; }
-    .menu-btn.primary { font-size: 18px; }
+    .menu-btn { font-size: 14.5px; padding: 14px 8px; }
+    .menu-btn.primary { font-size: 18px; padding: 16px; }
 
     .game-title { font-size: 36px; letter-spacing: 1px; }
     .game-subtitle { font-size: 14px; }
@@ -1046,6 +1048,53 @@
   .rk-tierbadge.tb-emerald  { background: linear-gradient(135deg,#1e8449,#50c878); color:#fff; }
   .rk-tierbadge.tb-diamond  { background: linear-gradient(135deg,#4dc8e8,#b9f2ff); color:#0a3a4a; }
   .rk-tierbadge.tb-master   { background: linear-gradient(135deg,#ff1493,#9c27b0,#4b0082); color:#fff; box-shadow:0 0 8px rgba(255,20,147,0.5); }
+
+  /* 트로피 캐비넷 (장식장) — 난이도별 색 + 최신순 + 입상 강조 */
+  .cab-year {
+    font-size: 14px; font-weight: 800; color: #87CEFA;
+    margin: 16px 0 8px; padding-bottom: 4px;
+    border-bottom: 1px solid rgba(135,206,250,0.3);
+  }
+  .cab-shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 9px; }
+  .cab-trophy {
+    --acc: 255,255,255;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    padding: 12px 6px 9px; border-radius: 12px; text-align: center;
+    background: linear-gradient(160deg, rgba(var(--acc),0.20), rgba(var(--acc),0.04));
+    border: 1px solid rgba(var(--acc),0.38);
+  }
+  .cab-trophy.d-easy   { --acc: 102,187,106; }
+  .cab-trophy.d-medium { --acc: 255,213,79; }
+  .cab-trophy.d-hard   { --acc: 251,140,0; }
+  .cab-trophy.d-hell   { --acc: 255,20,147; }
+  .cab-trophy .ct-ico { line-height: 1; }
+  .cab-trophy .ct-rank { font-size: 12px; font-weight: 800; opacity: 0.92; }
+  .cab-trophy .ct-meta { font-size: 10px; opacity: 0.7; line-height: 1.35; }
+  .cab-trophy .ct-dn { font-weight: 800; color: rgb(var(--acc)); filter: brightness(1.25); }
+  /* 입상(1·2·3위): 크게 + 난이도 색 글로우 + 둥실 + 메달색 등수 */
+  .cab-trophy.podium {
+    padding: 15px 6px 11px;
+    border-width: 1.5px; border-color: rgba(var(--acc),0.8);
+    background: linear-gradient(160deg, rgba(var(--acc),0.30), rgba(var(--acc),0.06));
+    animation: cabPulse 2.1s ease-in-out infinite;
+  }
+  @keyframes cabPulse {
+    0%,100% { box-shadow: 0 0 11px rgba(var(--acc),0.5); }
+    50%     { box-shadow: 0 0 22px rgba(var(--acc),0.9); }
+  }
+  .cab-trophy.podium .ct-ico { font-size: 36px; animation: cabFloat 2.6s ease-in-out infinite; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
+  @keyframes cabFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  .cab-trophy.podium .ct-rank { font-size: 13px; }
+  .cab-trophy.r1 .ct-rank { color: #FFD700; }
+  .cab-trophy.r2 .ct-rank { color: #E8E8E8; }
+  .cab-trophy.r3 .ct-rank { color: #f0b070; }
+  /* 4~10위: 아이콘만 작게, 배경 옅게/테두리 흐리게/살짝 투명 (글씨는 그대로) */
+  .cab-trophy.plain {
+    background: linear-gradient(160deg, rgba(var(--acc),0.10), rgba(var(--acc),0.02));
+    border-color: rgba(var(--acc),0.20);
+    opacity: 0.82;
+  }
+  .cab-trophy.plain .ct-ico { font-size: 18px; }
 </style>
 </head>
 <body>
@@ -1083,6 +1132,7 @@
   <div class="modal-overlay" id="achievementsModal">
     <div class="modal">
       <h3 data-i18n="achievementsTitle">🏆 업적</h3>
+      <button class="menu-btn" id="openCabinetBtn" style="width:100%; margin-bottom:12px;">🏆 트로피 캐비넷</button>
       <div class="modal-content" id="achievementsContent"></div>
       <button class="modal-close" data-i18n="close">닫기</button>
     </div>
@@ -1244,6 +1294,15 @@
       </div>
       <div id="rankingBody"></div>
       <button class="modal-close" id="rankingCloseBtn">닫기</button>
+    </div>
+  </div>
+
+  <!-- 트로피 캐비넷 -->
+  <div class="modal-overlay" id="cabinetModal">
+    <div class="modal">
+      <h3 id="cabinetTitle">🏆 트로피 캐비넷</h3>
+      <div class="modal-content" id="cabinetContent"></div>
+      <button class="modal-close" id="cabinetCloseBtn">닫기</button>
     </div>
   </div>
 
@@ -1479,9 +1538,11 @@ const I18N = {
       { id: 'blackholeMaster',icon: '🌀', name: '블랙홀 마스터',     desc: '블랙홀로 큰곰(8단계) 이상 제거' },
       { id: 'centurion',      icon: '🗓', name: '백일기도',          desc: '100일 연속 플레이' },
       { id: 'rankFirst',      icon: '🏅', name: '랭킹 데뷔',         desc: '랭킹에 첫 점수 등록' },
-      { id: 'rankTop10',      icon: '🔟', name: 'TOP 10',           desc: '랭킹 10위 안에 진입' },
-      { id: 'rankTop3',       icon: '🥉', name: '시상대',           desc: '랭킹 3위 안에 진입' },
-      { id: 'rankTop1',       icon: '👑', name: '랭킹 1위',          desc: '랭킹 1위 달성' },
+      { id: 'seasonPodium',   icon: '🏆', name: '첫 입상',           desc: '시즌 종료 시 3위 안에 입상' },
+      { id: 'seasonFirstWin', icon: '👑', name: '첫 우승',           desc: '시즌 1위 달성' },
+      { id: 'seasonStreak2',  icon: '🔥', name: '연속 입상',         desc: '2주 연속 10위 안 입상' },
+      { id: 'seasonWin3',     icon: '🔱', name: '3연패',             desc: '3주 연속 시즌 1위' },
+      { id: 'seasonCollector',icon: '🗄', name: '트로피 수집가',     desc: '캐비넷에 트로피 10개 모으기' },
     ]
   },
   en: {
@@ -1686,9 +1747,11 @@ const I18N = {
       { id: 'blackholeMaster',icon: '🌀', name: 'Blackhole Master',  desc: 'Blackhole an Ursa Major (tier 8) or higher' },
       { id: 'centurion',      icon: '🗓', name: '100-Day Devotion',  desc: '100 consecutive days of play' },
       { id: 'rankFirst',      icon: '🏅', name: 'Ranked',            desc: 'Submit your first ranked score' },
-      { id: 'rankTop10',      icon: '🔟', name: 'TOP 10',            desc: 'Reach top 10 on the leaderboard' },
-      { id: 'rankTop3',       icon: '🥉', name: 'Podium',            desc: 'Reach top 3 on the leaderboard' },
-      { id: 'rankTop1',       icon: '👑', name: 'Champion',          desc: 'Reach #1 on the leaderboard' },
+      { id: 'seasonPodium',   icon: '🏆', name: 'Podium',            desc: 'Finish top 3 when a season ends' },
+      { id: 'seasonFirstWin', icon: '👑', name: 'Champion',          desc: 'Win a season (1st place)' },
+      { id: 'seasonStreak2',  icon: '🔥', name: 'On a Roll',         desc: 'Top 10 two seasons in a row' },
+      { id: 'seasonWin3',     icon: '🔱', name: 'Three-peat',        desc: 'Win 1st three seasons in a row' },
+      { id: 'seasonCollector',icon: '🗄', name: 'Collector',         desc: 'Collect 10 trophies' },
     ]
   }
 };
@@ -1778,10 +1841,10 @@ const ACH_POINTS = {
   hardClear: 500,
   // 매우 어려움
   streak28: 800,
-  collector: 650,
-  speedrunMaster: 600,
-  hellClear: 700,
-  allCleared: 800,
+  collector: 750,
+  speedrunMaster: 800,
+  hellClear: 900,
+  allCleared: 1000,
   // === V2 추가 업적 점수 ===
   firstGameOver: 50,
   carefulType: 100,
@@ -1799,12 +1862,12 @@ const ACH_POINTS = {
   library: 350,
   cultist: 400,
   turtleX3: 500,
-  day24: 300,
+  day24: 500,
   minimalist: 500,
-  starFall: 600,
-  mergeMania: 600,
-  millionScore: 600,
-  trueVeteran: 700,
+  starFall: 700,
+  mergeMania: 700,
+  millionScore: 800,
+  trueVeteran: 900,
   anniversary: 1200,    // 꾸준함 계열 — 후하게 상향
   // === 신규 추가 업적 점수 ===
   blackholeMaster: 250, // 블랙홀로 큰곰+ 제거
@@ -1813,14 +1876,17 @@ const ACH_POINTS = {
   hellPerfect: 700,     // 무결점 헬
   centurion: 1200,      // 100일 연속 — 꾸준함, 후하게
   // === 랭킹 업적 점수 ===
-  rankFirst: 100,       // 첫 랭킹 등록 (쉬움)
-  rankTop10: 250,       // 10위 안 (중간)
-  rankTop3: 450,        // 3위 안 (어려움)
-  rankTop1: 700,        // 1위 (매우 어려움)
+  rankFirst: 100,       // 첫 랭킹 등록 (등수 보상은 시즌 정산 트로피로 별도 지급)
+  // === 시즌/캐비넷 업적 점수 ===
+  seasonPodium: 250,    // 첫 입상 (3위 안)
+  seasonFirstWin: 400,  // 첫 우승 (1위)
+  seasonStreak2: 300,   // 2주 연속 입상
+  seasonWin3: 700,      // 3주 연속 1위
+  seasonCollector: 350, // 트로피 10개 수집
 };
 
-// 티어 정의 (낮은 → 높은 순) — 총합 23,900 유지 (랭킹 업적 추가분만큼 고난도 업적 하향)
-//   diamond(19000)은 전체의 약 80% — 마스터(전 업적 해금) 직전 최고 수치 티어
+// 티어 정의 (낮은 → 높은 순) — 업적 트로피 총합 26,000 (시즌/캐비넷 업적 5종 포함), diamond 19,000 고정
+//   ※ 시즌 정산 트로피는 calcTrophyPoints 에 별도 누적되어 장기적으로 티어가 더 오름
 const TIER_LEVELS = [
   { id: 'iron',     icon: '⚙',  minPts: 0      },
   { id: 'bronze',   icon: '🥉', minPts: 1000   },
@@ -1839,6 +1905,8 @@ function calcTrophyPoints() {
       total += ACH_POINTS[id];
     }
   }
+  // 시즌 정산 트로피 누적 합산 (캐비넷)
+  if (typeof calcSeasonTrophies === 'function') total += calcSeasonTrophies();
   return total;
 }
 function calcMaxTrophyPoints() {
@@ -4521,6 +4589,10 @@ const RT_STR = {
     loginDone: '✓ 로그인되었습니다', loginFail: '로그인에 실패했어요', logoutDone: '로그아웃되었습니다',
     inAppBrowser: '⚠ 카카오톡 등 앱 내 브라우저에서는 구글 로그인이 막혀요. 아래 버튼으로 Chrome/Safari에서 열어주세요.',
     openExternal: '🌐 외부 브라우저로 열기',
+    seasonResult: '지난 시즌 정산!', seasonTotal: '합계', seasonNow: '이번 시즌',
+    cabinetTitle: '🏆 트로피 캐비넷', cabinetBtn: '🏆 캐비넷',
+    cabinetTotalLabel: '시즌 트로피 합계',
+    cabinetEmpty: '아직 시즌 보상 기록이 없어요.\n매주 시즌이 끝날 때 10등 안에 들면 트로피를 받아 여기에 쌓입니다!',
   },
   en: {
     profileTitleNew: 'Set Profile', profileTitleEdit: 'Edit Profile',
@@ -4552,9 +4624,74 @@ const RT_STR = {
     loginDone: '✓ Signed in', loginFail: 'Sign-in failed', logoutDone: 'Signed out',
     inAppBrowser: '⚠ In-app browsers (KakaoTalk, etc.) block Google sign-in. Use the button below to open in Chrome/Safari.',
     openExternal: '🌐 Open in browser',
+    seasonResult: 'Last Season Results!', seasonTotal: 'Total', seasonNow: 'This season',
+    cabinetTitle: '🏆 Trophy Cabinet', cabinetBtn: '🏆 Cabinet',
+    cabinetTotalLabel: 'Total season trophies',
+    cabinetEmpty: 'No season rewards yet.\nFinish in the top 10 when a season ends to earn trophies here!',
   }
 };
 function rt(k) { const m = RT_STR[currentLang] || RT_STR.ko; return (k in m) ? m[k] : RT_STR.ko[k]; }
+
+// ---- 시즌 (주간 ISO 주차) ----
+function getSeasonId(d) {
+  d = d || new Date();
+  const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dayNum = (date.getDay() + 6) % 7;      // 월=0
+  date.setDate(date.getDate() - dayNum + 3);   // 그 주의 목요일
+  const firstThu = new Date(date.getFullYear(), 0, 4);
+  const firstDayNum = (firstThu.getDay() + 6) % 7;
+  firstThu.setDate(firstThu.getDate() - firstDayNum + 3);
+  const week = 1 + Math.round((date - firstThu) / 604800000);
+  return `${date.getFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+function formatSeason(id) {
+  const m = /^(\d{4})-W(\d{2})$/.exec(id || '');
+  if (!m) return id || '';
+  const yy = m[1].slice(2);
+  return currentLang === 'en' ? `'${yy} W${m[2]}` : `${yy}년 ${parseInt(m[2], 10)}주차`;
+}
+// 시즌 보상 (F1식 차등 + 난이도 가중치)
+const SEASON_TROPHY_BASE = [1000, 800, 650, 500, 400, 300, 220, 150, 100, 50];
+const SEASON_DIFF_WEIGHT = { easy: 0.5, medium: 0.8, hard: 1.0, hell: 1.3 };
+function seasonTrophyFor(difficulty, rank) {
+  if (!rank || rank < 1 || rank > 10) return 0;
+  return Math.round(SEASON_TROPHY_BASE[rank - 1] * (SEASON_DIFF_WEIGHT[difficulty] || 1) / 10) * 10;
+}
+// ---- 트로피 캐비넷 (시즌 정산 기록) ----
+function loadCabinet() { try { return JSON.parse(localStorage.getItem('cm_cabinet') || '[]'); } catch (e) { return []; } }
+function saveCabinet(c) { localStorage.setItem('cm_cabinet', JSON.stringify(c)); }
+function calcSeasonTrophies() { return loadCabinet().reduce((s, e) => s + (e.trophy || 0), 0); }
+function loadAwarded() { try { return JSON.parse(localStorage.getItem('cm_awarded') || '{}'); } catch (e) { return {}; } }
+function saveAwarded(a) { localStorage.setItem('cm_awarded', JSON.stringify(a)); }
+function cabinetKey(e) { return e.season + '|' + e.difficulty; }
+function mergeCabinet(localArr, cloudArr) {
+  const map = new Map();
+  for (const e of (localArr || []).concat(cloudArr || [])) map.set(cabinetKey(e), e);
+  return [...map.values()];
+}
+// 시즌 ID → 정렬용 연속 주차 번호 (연도 경계는 근사)
+function seasonOrder(seasonId) {
+  const m = /^(\d{4})-W(\d{2})$/.exec(seasonId || '');
+  return m ? parseInt(m[1], 10) * 53 + parseInt(m[2], 10) : 0;
+}
+function maxConsecutive(orders) {
+  const arr = [...new Set(orders)].sort((a, b) => a - b);
+  let best = 0, cur = 0, prev = null;
+  for (const o of arr) { cur = (prev !== null && o === prev + 1) ? cur + 1 : 1; best = Math.max(best, cur); prev = o; }
+  return best;
+}
+// 캐비넷 기반 업적 판정
+function checkCabinetAchievements() {
+  if (typeof unlockAchievement !== 'function') return;
+  const cab = loadCabinet();
+  if (!cab.length) return;
+  if (cab.some(e => e.rank <= 3)) unlockAchievement('seasonPodium');
+  if (cab.some(e => e.rank === 1)) unlockAchievement('seasonFirstWin');
+  if (cab.length >= 10) unlockAchievement('seasonCollector');
+  // 시즌(주차) 단위 연속 — 입상(10위 내) 2연속, 1위 3연속
+  if (maxConsecutive(cab.map(e => seasonOrder(e.season))) >= 2) unlockAchievement('seasonStreak2');
+  if (maxConsecutive(cab.filter(e => e.rank === 1).map(e => seasonOrder(e.season))) >= 3) unlockAchievement('seasonWin3');
+}
 
 // ---- 국가 목록 ----
 const RK_COUNTRIES = [
@@ -4637,20 +4774,22 @@ function validateName(raw) {
 }
 
 // ---- 집계 헬퍼 ----
-function bestPerUid(entries, difficulty) {
+function bestPerUid(entries, difficulty, season) {
   const m = new Map();
   for (const e of entries) {
     if (e.difficulty !== difficulty) continue;
+    if (season && e.season !== season) continue;
     const c = m.get(e.uid);
     if (!c || e.score > c.score) m.set(e.uid, e);
   }
   return [...m.values()].sort((a, b) => b.score - a.score);
 }
-function schoolAgg(entries, mode) {
-  // 1인(uid) 1일(date) 최고점만 반영 → 학교별 합산/최고
+function schoolAgg(entries, mode, season) {
+  // 1인(uid) 1일(date) 최고점만 반영 → 학교별 합산/최고 (현재 시즌)
   const daily = new Map();
   for (const e of entries) {
     if (!e.school) continue;
+    if (season && e.season !== season) continue;
     const k = e.uid + '|' + e.date;
     const c = daily.get(k);
     if (!c || e.score > c.score) daily.set(k, { school: e.school, score: e.score });
@@ -4683,22 +4822,25 @@ const RankingMock = {
   async submitScore({ uid, difficulty, score, profile, date }) {
     const a = this._all();
     const tier = (typeof getCurrentTier === 'function') ? getCurrentTier().tier.id : 'iron';
+    const season = getSeasonId();
     a.push({ uid, name: profile.name, country: profile.country, flag: countryByCode(profile.country).flag,
-             school: profile.school || null, difficulty, score, tier, date });
+             school: profile.school || null, difficulty, score, tier, season, date });
     this._save(a);
-    const ranked = bestPerUid(a, difficulty);
+    localStorage.setItem('cm_last_season', season);
+    const ranked = bestPerUid(a, difficulty, season);
     const idx = ranked.findIndex(e => e.uid === uid);
     return { rank: idx >= 0 ? idx + 1 : null, total: ranked.length };
   },
-  async personalTop({ difficulty, limit = 10 }) { return bestPerUid(this._all(), difficulty).slice(0, limit); },
+  async personalTop({ difficulty, limit = 10 }) { return bestPerUid(this._all(), difficulty, getSeasonId()).slice(0, limit); },
   async myStanding({ difficulty, uid }) {
-    const r = bestPerUid(this._all(), difficulty);
+    const r = bestPerUid(this._all(), difficulty, getSeasonId());
     const idx = r.findIndex(e => e.uid === uid);
     return idx >= 0 ? { rank: idx + 1, total: r.length, entry: r[idx] } : { rank: null, total: r.length, entry: null };
   },
-  async schoolTop({ mode, limit = 10 }) { return schoolAgg(this._all(), mode).slice(0, limit); },
+  async seasonLeaderboard({ season, difficulty }) { return bestPerUid(this._all(), difficulty, season); },
+  async schoolTop({ mode, limit = 10 }) { return schoolAgg(this._all(), mode, getSeasonId()).slice(0, limit); },
   async schoolStanding({ mode, school }) {
-    const arr = schoolAgg(this._all(), mode);
+    const arr = schoolAgg(this._all(), mode, getSeasonId());
     if (!school) return { rank: null, total: arr.length, entry: null };
     const idx = arr.findIndex(s => s.school === school);
     return idx >= 0 ? { rank: idx + 1, total: arr.length, entry: arr[idx] } : { rank: null, total: arr.length, entry: null };
@@ -4736,37 +4878,42 @@ const RankingFirebase = {
     return this._ready;
   },
   async getUid() { await this._init(); return this._uid; },
-  async _allForDiff(difficulty) {
-    const c = this._cache[difficulty];
+  async _allForDiff(difficulty, season) {
+    season = season || getSeasonId();
+    const ck = season + '|' + difficulty;
+    const c = this._cache[ck];
     if (c && (Date.now() - c.t) < 4000) return c.v;
-    const q = await this._db.collection('scores').where('difficulty', '==', difficulty)
+    const q = await this._db.collection('scores')
+      .where('season', '==', season).where('difficulty', '==', difficulty)
       .orderBy('score', 'desc').limit(1000).get();
     const v = q.docs.map(d => d.data());
-    this._cache[difficulty] = { t: Date.now(), v };
+    this._cache[ck] = { t: Date.now(), v };
     return v;
   },
   async submitScore({ difficulty, score, profile, date }) {
     await this._init();
     const uid = this._uid, db = this._db;
     const tier = (typeof getCurrentTier === 'function') ? getCurrentTier().tier.id : 'iron';
-    const pref = db.collection('scores').doc(`${uid}_${difficulty}`);
+    const season = getSeasonId();
+    const pref = db.collection('scores').doc(`${uid}_${season}_${difficulty}`);
     await db.runTransaction(async tx => {
       const snap = await tx.get(pref);
       const prev = snap.exists ? (snap.data().score || -1) : -1;
       if (score > prev) {
         tx.set(pref, { uid, name: profile.name, country: profile.country,
           flag: countryByCode(profile.country).flag, school: profile.school || null,
-          difficulty, score, tier, updatedAt: Date.now() });
+          difficulty, season, score, tier, updatedAt: Date.now() });
       }
     });
     if (profile.school) {
-      const dref = db.collection('dailyBest').doc(`${uid}_${date}`);
+      const dref = db.collection('dailyBest').doc(`${uid}_${season}_${date}`);
       await db.runTransaction(async tx => {
         const snap = await tx.get(dref);
         const prev = snap.exists ? (snap.data().score || -1) : -1;
-        if (score > prev) tx.set(dref, { uid, school: profile.school, score, date });
+        if (score > prev) tx.set(dref, { uid, school: profile.school, score, season, date });
       });
     }
+    localStorage.setItem('cm_last_season', season);
     this._cache = {};
     return await this.myStanding({ difficulty, uid });
   },
@@ -4778,8 +4925,9 @@ const RankingFirebase = {
     const idx = all.findIndex(e => e.uid === uid);
     return idx >= 0 ? { rank: idx + 1, total: all.length, entry: all[idx] } : { rank: null, total: all.length, entry: null };
   },
+  async seasonLeaderboard({ season, difficulty }) { await this._init(); return await this._allForDiff(difficulty, season); },
   async _schoolAgg() {
-    const q = await this._db.collection('dailyBest').limit(5000).get();
+    const q = await this._db.collection('dailyBest').where('season', '==', getSeasonId()).limit(5000).get();
     const sc = new Map();
     q.forEach(doc => {
       const v = doc.data();
@@ -4838,7 +4986,10 @@ const RankingFirebase = {
   async saveCloudProfile(profile) {
     await this._init();
     await this._db.collection('users').doc(this._uid).set(
-      { name: profile.name, country: profile.country, school: profile.school || null, updatedAt: Date.now() },
+      { name: profile.name, country: profile.country, school: profile.school || null,
+        cabinet: (typeof loadCabinet === 'function') ? loadCabinet() : [],
+        awarded: (typeof loadAwarded === 'function') ? loadAwarded() : {},
+        updatedAt: Date.now() },
       { merge: true });
   },
 };
@@ -4852,6 +5003,7 @@ function seedMockRanking() {
   const diffs = ['easy','medium','hard','hell'];
   const baseBy = { easy: 8000, medium: 18000, hard: 32000, hell: 30000 };
   const today = localDateStr();
+  const season = getSeasonId();
   const TIER_IDS = ['iron', 'bronze', 'silver', 'gold', 'platinum', 'emerald', 'diamond'];
   const a = [];
   for (let i = 0; i < names.length; i++) {
@@ -4860,7 +5012,7 @@ function seedMockRanking() {
     const tier = TIER_IDS[Math.floor(Math.random() * TIER_IDS.length)];
     for (const d of diffs) {
       const sc = Math.floor(baseBy[d] * (0.4 + Math.random() * 0.95));
-      a.push({ uid: 'seed_' + i, name: names[i], country: c.code, flag: c.flag, school, difficulty: d, score: sc, tier, date: today });
+      a.push({ uid: 'seed_' + i, name: names[i], country: c.code, flag: c.flag, school, difficulty: d, score: sc, tier, season, date: today });
     }
   }
   localStorage.setItem('cm_rank_entries', JSON.stringify(a));
@@ -5034,7 +5186,7 @@ async function onGoogleLogin() {
   if (isInAppBrowser()) { openExternalBrowser(); return; }
   try {
     await RankingAPI.signInWithGoogle();
-    // 클라우드에 프로필이 있으면 불러오고(타 기기 사용자), 없으면 현재 프로필 업로드(첫 로그인)
+    // 클라우드에 프로필이 있으면 불러오고(타 기기 사용자), 캐비넷도 병합
     const cloud = await RankingAPI.loadCloudProfile();
     if (cloud && cloud.name) {
       const p = loadProfile() || {};
@@ -5045,11 +5197,14 @@ async function onGoogleLogin() {
       profNameEl.value = p.name; profCountryEl.value = p.country;
       _selectedSchool = p.school; profSchoolEl.value = p.school || '';
       updateFlagPreview();
-    } else {
-      const p = loadProfile();
-      if (p && p.name) await RankingAPI.saveCloudProfile(p);
     }
+    if (cloud && cloud.cabinet) saveCabinet(mergeCabinet(loadCabinet(), cloud.cabinet));
+    if (cloud && cloud.awarded) { const a = loadAwarded(); Object.assign(a, cloud.awarded); saveAwarded(a); }
+    // 병합 결과(프로필+캐비넷)를 클라우드에 다시 업로드 → 양방향 동기화
+    const merged = loadProfile();
+    if (merged && merged.name) await RankingAPI.saveCloudProfile(merged);
     renderAccountSection();
+    if (typeof refreshTierDisplays === 'function') refreshTierDisplays();
     showRankToast(rt('loginDone'));
   } catch (e) {
     console.warn('google login failed', e);
@@ -5061,22 +5216,113 @@ async function onLogout() {
   renderAccountSection();
   showRankToast(rt('logoutDone'));
 }
-// 시작 시: 로그인된 사용자면 클라우드 프로필 복원 (타 기기에서 이어가기)
+// 시작 시: 로그인 프로필/캐비넷 복원 + 지난 시즌 정산
 async function rankingStartup() {
-  if (!RANK_USE_FIREBASE) return;
   try {
-    await RankingFirebase._init();
-    if (RankingFirebase.authInfo().signedIn) {
-      const cloud = await RankingFirebase.loadCloudProfile();
-      if (cloud && cloud.name) {
-        const p = loadProfile() || {};
-        p.uid = p.uid || getOrCreateUID();
-        p.name = cloud.name; p.country = cloud.country || p.country || 'KR'; p.school = cloud.school || null;
-        saveProfile(p);
+    if (RANK_USE_FIREBASE) {
+      await RankingFirebase._init();
+      if (RankingFirebase.authInfo().signedIn) {
+        const cloud = await RankingFirebase.loadCloudProfile();
+        if (cloud) {
+          if (cloud.name) {
+            const p = loadProfile() || {};
+            p.uid = p.uid || getOrCreateUID();
+            p.name = cloud.name; p.country = cloud.country || p.country || 'KR'; p.school = cloud.school || null;
+            saveProfile(p);
+          }
+          if (cloud.cabinet) saveCabinet(mergeCabinet(loadCabinet(), cloud.cabinet));
+          if (cloud.awarded) { const a = loadAwarded(); Object.assign(a, cloud.awarded); saveAwarded(a); }
+        }
       }
     }
+    await finalizeSeasons();
+    checkCabinetAchievements();
   } catch (e) { console.warn('ranking startup', e); }
 }
+// 지난 시즌 최종 순위 정산 → 트로피 지급 + 캐비넷 기록
+async function finalizeSeasons() {
+  const last = localStorage.getItem('cm_last_season');
+  if (!last || last === getSeasonId()) return;
+  if (loadAwarded()[last]) return;
+  const uid = await RankingAPI.getUid();
+  const found = [];
+  for (const d of ['easy', 'medium', 'hard', 'hell']) {
+    let board;
+    try { board = await RankingAPI.seasonLeaderboard({ season: last, difficulty: d }); }
+    catch (e) { console.warn('finalize fetch fail', e); return; } // 실패 시 다음 기회에 재시도
+    const idx = board.findIndex(e => e.uid === uid);
+    if (idx >= 0 && idx < 10) {
+      const rank = idx + 1;
+      found.push({ season: last, difficulty: d, rank, trophy: seasonTrophyFor(d, rank), ts: Date.now() });
+    }
+  }
+  saveCabinet(loadCabinet().concat(found));
+  const aw = loadAwarded(); aw[last] = true; saveAwarded(aw);
+  if (found.length) {
+    if (typeof refreshTierDisplays === 'function') refreshTierDisplays();
+    showSeasonResultPopup(last, found);
+  }
+  if (RANK_USE_FIREBASE && RankingAPI.authInfo && RankingAPI.authInfo().signedIn) {
+    RankingAPI.saveCloudProfile(loadProfile() || { name: '' }).catch(() => {});
+  }
+}
+function showSeasonResultPopup(season, entries) {
+  const diffName = { easy: t('diffEasy'), medium: t('diffMedium'), hard: t('diffHard'), hell: t('diffHell') };
+  const sorted = entries.slice().sort((a, b) => a.rank - b.rank);
+  const total = entries.reduce((s, e) => s + e.trophy, 0);
+  const rows = sorted.map(e => `<div style="display:flex;justify-content:space-between;gap:14px;font-size:14px;margin:4px 0;"><span>${diffName[e.difficulty]} · ${e.rank}${rt('rankWord')}</span><span style="color:#FFD700;font-weight:800;">+${e.trophy}🏆</span></div>`).join('');
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:500;
+    background:linear-gradient(160deg,#2d1b4e,#1a1f4b);border:1px solid rgba(255,215,0,.4);
+    border-radius:16px;padding:20px 24px;min-width:250px;max-width:86%;color:#fff;text-align:center;
+    box-shadow:0 12px 40px rgba(0,0,0,.6);`;
+  el.innerHTML = `<div style="font-size:19px;font-weight:800;color:#FFD700;">🏆 ${rt('seasonResult')}</div>` +
+    `<div style="font-size:12px;opacity:.7;margin:4px 0 12px;">${formatSeason(season)}</div>${rows}` +
+    `<div style="border-top:1px solid rgba(255,255,255,.15);margin-top:10px;padding-top:8px;font-weight:800;">${rt('seasonTotal')} +${total}🏆</div>` +
+    `<button class="menu-btn primary" style="width:100%;margin-top:14px;">${rt('close')}</button>`;
+  el.querySelector('button').addEventListener('click', () => el.remove());
+  document.body.appendChild(el);
+}
+// ---- 트로피 캐비넷 화면 ----
+const cabinetModal = document.getElementById('cabinetModal');
+function renderCabinet() {
+  document.getElementById('cabinetTitle').textContent = rt('cabinetTitle');
+  document.getElementById('cabinetCloseBtn').textContent = rt('close');
+  const el = document.getElementById('cabinetContent');
+  const cab = loadCabinet();
+  const diffName = { easy: t('diffEasy'), medium: t('diffMedium'), hard: t('diffHard'), hell: t('diffHell') };
+  let html = `<div style="text-align:center;background:rgba(255,215,0,.12);border-radius:12px;padding:12px;margin-bottom:6px;">` +
+    `<div style="font-size:12px;opacity:.75;">${rt('cabinetTotalLabel')}</div>` +
+    `<div style="font-size:26px;font-weight:800;color:#FFD700;">${rkFmt(calcSeasonTrophies())} 🏆</div></div>`;
+  if (!cab.length) {
+    html += `<div class="rk-empty" style="white-space:pre-line;">${rt('cabinetEmpty')}</div>`;
+  } else {
+    // 연도별 그룹 → 주차/등수 순 진열
+    const byYear = {};
+    for (const e of cab) {
+      const m = /^(\d{4})-W(\d{2})$/.exec(e.season || '');
+      const yr = m ? m[1] : '----';
+      const wk = m ? parseInt(m[2], 10) : 0;
+      (byYear[yr] = byYear[yr] || []).push({ e, wk });
+    }
+    for (const yr of Object.keys(byYear).sort().reverse()) {  // 최신 연도 위로
+      const yLabel = currentLang === 'en' ? yr : (yr.slice(2) + '년');
+      html += `<div class="cab-year">${yLabel}</div><div class="cab-shelf">`;
+      const items = byYear[yr].sort((a, b) => b.wk - a.wk || a.e.rank - b.e.rank);  // 최신 주차 앞으로
+      for (const { e, wk } of items) {
+        const ico = e.rank === 1 ? '🥇' : e.rank === 2 ? '🥈' : e.rank === 3 ? '🥉' : '🏆';
+        const podium = e.rank <= 3 ? ` podium r${e.rank}` : ' plain';
+        const wkLabel = currentLang === 'en' ? `W${wk}` : `${wk}주차`;
+        html += `<div class="cab-trophy d-${e.difficulty}${podium}"><div class="ct-ico">${ico}</div>` +
+          `<div class="ct-rank">${e.rank}${rt('rankWord')}</div>` +
+          `<div class="ct-meta"><span class="ct-dn">${rkEscape(diffName[e.difficulty] || e.difficulty)}</span><br>${wkLabel}</div></div>`;
+      }
+      html += `</div>`;
+    }
+  }
+  el.innerHTML = html;
+}
+document.getElementById('openCabinetBtn').addEventListener('click', () => { renderCabinet(); openModal(cabinetModal); });
 
 // ---- 랭킹 모달 ----
 const rankingModal = document.getElementById('rankingModal');
@@ -5108,7 +5354,8 @@ function rkRowHTML(rank, flag, name, sub, score, isMe, idx, tier, showTier) {
          `<div class="rk-name"><span class="rk-name-text">${rkEscape(name)}</span>${subHTML}</div><div class="rk-score">${rkFmt(score)}</div></div>`;
 }
 async function renderRankingBody() {
-  document.getElementById('rankingTitle').textContent = rt('rankingTitle');
+  document.getElementById('rankingTitle').innerHTML = rt('rankingTitle') +
+    ` <span style="font-size:12px;opacity:.6;font-weight:400;">· ${formatSeason(getSeasonId())}</span>`;
   document.getElementById('rkTabPersonal').textContent = rt('tabPersonal');
   document.getElementById('rkTabSchool').textContent = rt('tabSchool');
   document.getElementById('rankingCloseBtn').textContent = rt('close');
@@ -5202,12 +5449,7 @@ async function submitCurrentScore() {
   try {
     const res = await RankingAPI.submitScore({ uid: p.uid, difficulty: currentDifficulty, score, profile: p, date: localDateStr() });
     // 랭킹 업적
-    if (res) {
-      unlockAchievement('rankFirst');
-      if (res.rank && res.rank <= 10) unlockAchievement('rankTop10');
-      if (res.rank && res.rank <= 3)  unlockAchievement('rankTop3');
-      if (res.rank === 1)             unlockAchievement('rankTop1');
-    }
+    if (res) unlockAchievement('rankFirst');
     return res;
   } catch (e) { console.warn('ranking submit failed', e); return null; }
 }
@@ -5238,6 +5480,7 @@ function showRankToast(msg) {
 function applyRankingLangTexts() {
   const pb = document.getElementById('profileBtn'); if (pb) pb.textContent = rt('myProfile');
   const grb = document.getElementById('gameoverRankBtn'); if (grb) grb.textContent = rt('viewRanking');
+  const ocb = document.getElementById('openCabinetBtn'); if (ocb) ocb.textContent = rt('cabinetTitle');
 }
 document.getElementById('profileBtn').addEventListener('click', () => openProfileModal());
 document.getElementById('gameoverRankBtn').addEventListener('click', () => openRankingModal('personal'));
