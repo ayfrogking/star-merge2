@@ -4906,27 +4906,33 @@ const RankingMock = {
 };
 // Firebase 구현 — 익명 인증 + Firestore (Mock 과 동일 인터페이스)
 const RankingFirebase = {
-  _db: null, _uid: null, _ready: null, _cache: {},
+  _db: null, _uid: null, _ready: null, _cache: {}, _justLoggedIn: false,
   _init() {
     if (this._ready) return this._ready;
-    this._ready = new Promise((resolve, reject) => {
-      if (typeof firebase === 'undefined' || !firebase.initializeApp) { reject(new Error('Firebase SDK 미로드')); return; }
+    this._ready = (async () => {
+      if (typeof firebase === 'undefined' || !firebase.initializeApp) throw new Error('Firebase SDK 미로드');
+      if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      this._db = firebase.firestore();
+      // 리다이렉트 로그인 복귀 결과 먼저 처리 (팝업 COOP 차단 회피용 redirect 방식)
       try {
-        if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        this._db = firebase.firestore();
+        const res = await firebase.auth().getRedirectResult();
+        if (res && res.user) this._justLoggedIn = true;
+      } catch (err) {
+        // 이 구글 계정이 이미 다른 기기에서 쓰였으면 → 그 계정으로 로그인 (기존 기록 따라옴)
+        if (err && err.code === 'auth/credential-already-in-use' && err.credential) {
+          try { await firebase.auth().signInWithCredential(err.credential); this._justLoggedIn = true; }
+          catch (e2) { console.warn('signInWithCredential', e2); }
+        } else { console.warn('redirect result', err); }
+      }
+      // 인증 상태 확정 — 세션 없으면 익명 로그인 (구글 세션은 덮어쓰지 않음)
+      await new Promise((resolve, reject) => {
         let done = false;
         firebase.auth().onAuthStateChanged(u => {
-          if (u) {
-            // 기존 세션(익명 또는 구글)이 있으면 그대로 사용 → 로그인 지속됨
-            this._uid = u.uid;
-            if (!done) { done = true; resolve(); }
-          } else {
-            // 로그인된 사용자가 없을 때만 익명 로그인 (구글 세션을 덮어쓰지 않음)
-            firebase.auth().signInAnonymously().catch(err => { if (!done) { done = true; reject(err); } });
-          }
+          if (u) { this._uid = u.uid; if (!done) { done = true; resolve(); } }
+          else { firebase.auth().signInAnonymously().catch(err => { if (!done) { done = true; reject(err); } }); }
         });
-      } catch (e) { reject(e); }
-    });
+      });
+    })();
     return this._ready;
   },
   async getUid() { await this._init(); return this._uid; },
@@ -5009,19 +5015,10 @@ const RankingFirebase = {
     await this._init();
     const provider = new firebase.auth.GoogleAuthProvider();
     const user = firebase.auth().currentUser;
-    try {
-      // 현재 익명 계정을 구글에 "연결" → 기존 기록(uid) 그대로 보존
-      if (user && user.isAnonymous) await user.linkWithPopup(provider);
-      else await firebase.auth().signInWithPopup(provider);
-    } catch (e) {
-      // 이 구글 계정이 이미 다른 기기에서 쓰였으면 → 그 계정으로 로그인 (기존 기록 따라옴)
-      if (e.code === 'auth/credential-already-in-use' && e.credential) {
-        await firebase.auth().signInWithCredential(e.credential);
-      } else { throw e; }
-    }
-    this._uid = firebase.auth().currentUser.uid;
-    this._cache = {};
-    return this.authInfo();
+    // 리다이렉트 방식 (GitHub Pages 등의 팝업 COOP 차단 회피). 페이지가 구글로 이동하고,
+    // 복귀 시 _init 의 getRedirectResult + rankingStartup 에서 후속 동기화 처리.
+    if (user && user.isAnonymous) await user.linkWithRedirect(provider);
+    else await firebase.auth().signInWithRedirect(provider);
   },
   async signOutAccount() {
     await firebase.auth().signOut();
@@ -5238,28 +5235,8 @@ function openExternalBrowser() {
 async function onGoogleLogin() {
   if (isInAppBrowser()) { openExternalBrowser(); return; }
   try {
+    // 리다이렉트로 구글 로그인 → 페이지가 구글로 이동. 복귀 후 rankingStartup 이 동기화/안내 처리.
     await RankingAPI.signInWithGoogle();
-    // 클라우드에 프로필이 있으면 불러오고(타 기기 사용자), 캐비넷도 병합
-    const cloud = await RankingAPI.loadCloudProfile();
-    if (cloud && cloud.name) {
-      const p = loadProfile() || {};
-      p.uid = p.uid || getOrCreateUID();
-      p.name = cloud.name; p.country = cloud.country || 'KR'; p.school = cloud.school || null;
-      p.updatedAt = Date.now();
-      saveProfile(p);
-      profNameEl.value = p.name; profCountryEl.value = p.country;
-      _selectedSchool = p.school; profSchoolEl.value = p.school || '';
-      updateFlagPreview();
-    }
-    if (cloud && cloud.cabinet) saveCabinet(mergeCabinet(loadCabinet(), cloud.cabinet));
-    if (cloud && cloud.awarded) { const a = loadAwarded(); Object.assign(a, cloud.awarded); saveAwarded(a); }
-    if (cloud && cloud.stats) { stats = mergeStatsObjects(stats, cloud.stats); saveStats(); } // 업적·통계·티어 복원
-    // 병합 결과(프로필+캐비넷+통계)를 클라우드에 다시 업로드 → 양방향 동기화
-    const merged = loadProfile();
-    if (merged && merged.name) await RankingAPI.saveCloudProfile(merged);
-    renderAccountSection();
-    if (typeof refreshTierDisplays === 'function') refreshTierDisplays();
-    showRankToast(rt('loginDone'));
   } catch (e) {
     console.warn('google login failed', e);
     showRankToast(rt('loginFail'));
@@ -5286,7 +5263,15 @@ async function rankingStartup() {
           }
           if (cloud.cabinet) saveCabinet(mergeCabinet(loadCabinet(), cloud.cabinet));
           if (cloud.awarded) { const a = loadAwarded(); Object.assign(a, cloud.awarded); saveAwarded(a); }
-          if (cloud.stats) { stats = mergeStatsObjects(stats, cloud.stats); saveStats(); refreshTierDisplays(); } // 업적·통계·티어 복원
+          if (cloud.stats) { stats = mergeStatsObjects(stats, cloud.stats); saveStats(); } // 업적·통계·티어 복원
+        }
+        refreshTierDisplays();
+        // 방금 리다이렉트로 로그인 완료된 경우: 병합 결과를 클라우드에 다시 업로드 + 안내
+        if (RankingFirebase._justLoggedIn) {
+          const p = loadProfile();
+          if (p && p.name) await RankingFirebase.saveCloudProfile(p);
+          if (typeof renderAccountSection === 'function') renderAccountSection();
+          showRankToast(rt('loginDone'));
         }
       }
     }
