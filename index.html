@@ -1280,6 +1280,10 @@
       </div>
       <button class="menu-btn primary" id="profSaveBtn" style="width:100%; margin-top:6px;">저장</button>
       <div class="rk-account" id="profAccount"></div>
+      <div style="display:flex; gap:6px; margin-top:10px;">
+        <button class="menu-btn" id="exportDataBtn" style="flex:1; font-size:13px; padding:9px;">📤 기기 이전 코드</button>
+        <button class="menu-btn" id="importDataBtn" style="flex:1; font-size:13px; padding:9px;">📥 코드 가져오기</button>
+      </div>
       <div class="rk-mock" id="profMock"></div>
     </div>
   </div>
@@ -4608,6 +4612,12 @@ const RT_STR = {
     cabinetTitle: '🏆 트로피 캐비넷', cabinetBtn: '🏆 캐비넷',
     cabinetTotalLabel: '시즌 트로피 합계',
     cabinetEmpty: '아직 시즌 보상 기록이 없어요.\n매주 시즌이 끝날 때 10등 안에 들면 트로피를 받아 여기에 쌓입니다!',
+    migrateExport: '📤 기기 이전 코드', migrateImport: '📥 코드 가져오기',
+    exportDone: '📤 이전 코드가 복사됐어요! 새 주소에서 "코드 가져오기"에 붙여넣으세요.',
+    exportManual: '아래 코드를 전체 선택해 복사하세요:',
+    importPrompt: '이전 코드를 붙여넣으세요:',
+    importDone: '✓ 데이터를 가져왔어요! 새로고침합니다.',
+    importFail: '코드가 올바르지 않아요. 다시 확인해 주세요.',
   },
   en: {
     profileTitleNew: 'Set Profile', profileTitleEdit: 'Edit Profile',
@@ -4643,6 +4653,12 @@ const RT_STR = {
     cabinetTitle: '🏆 Trophy Cabinet', cabinetBtn: '🏆 Cabinet',
     cabinetTotalLabel: 'Total season trophies',
     cabinetEmpty: 'No season rewards yet.\nFinish in the top 10 when a season ends to earn trophies here!',
+    migrateExport: '📤 Export code', migrateImport: '📥 Import code',
+    exportDone: '📤 Transfer code copied! Paste it into "Import code" on the new address.',
+    exportManual: 'Select all and copy this code:',
+    importPrompt: 'Paste your transfer code:',
+    importDone: '✓ Data imported! Reloading.',
+    importFail: 'Invalid code. Please check and try again.',
   }
 };
 function rt(k) { const m = RT_STR[currentLang] || RT_STR.ko; return (k in m) ? m[k] : RT_STR.ko[k]; }
@@ -5247,6 +5263,33 @@ async function onLogout() {
   renderAccountSection();
   showRankToast(rt('logoutDone'));
 }
+// ── 기기 데이터 이전 (도메인이 달라 localStorage가 분리될 때 수동 이전) ──
+const MIGRATE_KEYS = ['cm_stats', 'cm_profile', 'cm_cabinet', 'cm_awarded', 'cm_uid', 'constellation_best', 'cm_last_season', 'cm_lang', 'cm_sound'];
+function buildMigrateCode() {
+  const data = {};
+  for (const k of MIGRATE_KEYS) { const v = localStorage.getItem(k); if (v !== null) data[k] = v; }
+  return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+}
+function applyMigrateCode(code) {
+  const data = JSON.parse(decodeURIComponent(escape(atob((code || '').trim()))));
+  let n = 0;
+  for (const k in data) { if (MIGRATE_KEYS.includes(k)) { localStorage.setItem(k, data[k]); n++; } }
+  return n;
+}
+document.getElementById('exportDataBtn').addEventListener('click', () => {
+  const code = buildMigrateCode();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(() => showRankToast(rt('exportDone'))).catch(() => window.prompt(rt('exportManual'), code));
+  } else { window.prompt(rt('exportManual'), code); }
+});
+document.getElementById('importDataBtn').addEventListener('click', () => {
+  const code = window.prompt(rt('importPrompt'));
+  if (!code) return;
+  try {
+    const n = applyMigrateCode(code);
+    if (n > 0) { alert(rt('importDone')); location.reload(); } else { alert(rt('importFail')); }
+  } catch (e) { alert(rt('importFail')); }
+});
 // 시작 시: 로그인 프로필/캐비넷 복원 + 지난 시즌 정산
 async function rankingStartup() {
   try {
@@ -5521,6 +5564,8 @@ function applyRankingLangTexts() {
   const pb = document.getElementById('profileBtn'); if (pb) pb.textContent = rt('myProfile');
   const grb = document.getElementById('gameoverRankBtn'); if (grb) grb.textContent = rt('viewRanking');
   const ocb = document.getElementById('openCabinetBtn'); if (ocb) ocb.textContent = rt('cabinetTitle');
+  const edb = document.getElementById('exportDataBtn'); if (edb) edb.textContent = rt('migrateExport');
+  const idb = document.getElementById('importDataBtn'); if (idb) idb.textContent = rt('migrateImport');
 }
 document.getElementById('profileBtn').addEventListener('click', () => openProfileModal());
 document.getElementById('gameoverRankBtn').addEventListener('click', () => openRankingModal('personal'));
