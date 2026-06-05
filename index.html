@@ -4934,10 +4934,16 @@ const RankingFirebase = {
         const res = await firebase.auth().getRedirectResult();
         if (res && res.user) this._justLoggedIn = true;
       } catch (err) {
-        // 이 구글 계정이 이미 다른 기기에서 쓰였으면 → 그 계정으로 로그인 (기존 기록 따라옴)
-        if (err && err.code === 'auth/credential-already-in-use' && err.credential) {
-          try { await firebase.auth().signInWithCredential(err.credential); this._justLoggedIn = true; }
-          catch (e2) { console.warn('signInWithCredential', e2); }
+        // 이 구글 계정이 이미 다른 익명 계정에 연결돼 있으면 → 그 계정으로 로그인 (기존 기록 따라옴)
+        if (err && err.code === 'auth/credential-already-in-use') {
+          // Firebase v10: 에러에서 자격증명 추출은 credentialFromError 사용 (err.credential 아님)
+          const cred = (firebase.auth.GoogleAuthProvider && firebase.auth.GoogleAuthProvider.credentialFromError)
+            ? firebase.auth.GoogleAuthProvider.credentialFromError(err)
+            : err.credential;
+          if (cred) {
+            try { await firebase.auth().signInWithCredential(cred); this._justLoggedIn = true; }
+            catch (e2) { console.warn('signInWithCredential 실패', e2); }
+          } else { console.warn('credential 추출 실패', err); }
         } else { console.warn('redirect result', err); }
       }
       // 인증 상태 확정 — 세션 없으면 익명 로그인 (구글 세션은 덮어쓰지 않음)
