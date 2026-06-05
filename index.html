@@ -2283,6 +2283,7 @@ let lastDropTime = 0;
 let nextTier = 0;
 let isGameOver = false;
 let isPaused = false;
+let _runFinalized = false; // 한 판당 통계/랭킹 정산 1회 가드
 let deadLineEnterTime = null;
 let aimX = WIDTH / 2;
 let particles = [];
@@ -3322,6 +3323,56 @@ function updateDeadlineCountdown() {
   deadlineCountdownEl.classList.add('show');
 }
 
+// 한 판 정산 (통계 + 점수 업적 + 랭킹 등록) — 게임오버 / 클리어→메인 / 일시정지→메인 공통, 판당 1회
+function finalizeRun() {
+  if (_runFinalized || !score || score <= 0) return Promise.resolve(null);
+  _runFinalized = true;
+  const isNewBest = score > bestScoreAtGameStart;
+  // 통계 누적
+  stats.totalGames++;
+  stats.totalScore += score;
+  const elapsedSec = Math.max(0, (performance.now() - _gameStartTime) / 1000);
+  stats.totalPlayTimeSec = (stats.totalPlayTimeSec || 0) + elapsedSec;
+  if (_maxComboThisGame > (stats.maxComboEver || 0)) stats.maxComboEver = _maxComboThisGame;
+  if (isNewBest) stats.newBestCount = (stats.newBestCount || 0) + 1;
+  // 난이도별 통계 (최고/평균/시도)
+  stats.bestByDiff = stats.bestByDiff || {};
+  stats.scoreSumByDiff = stats.scoreSumByDiff || {};
+  stats.attemptsByDiff = stats.attemptsByDiff || {};
+  stats.bestByDiff[currentDifficulty] = Math.max(stats.bestByDiff[currentDifficulty] || 0, score);
+  stats.scoreSumByDiff[currentDifficulty] = (stats.scoreSumByDiff[currentDifficulty] || 0) + score;
+  stats.attemptsByDiff[currentDifficulty] = (stats.attemptsByDiff[currentDifficulty] || 0) + 1;
+  if (currentDifficulty === 'hell') stats.hellWarningTotal = (stats.hellWarningTotal || 0) + hellWarnings;
+  const today = localDateStr();
+  if (!stats.firstPlayDate) stats.firstPlayDate = today;
+  stats.lastPlayDate = today;
+  saveStats();
+  // 점수 업적
+  if (score >= 1000)   unlockAchievement('score1k');
+  if (score >= 10000)  unlockAchievement('score10k');
+  if (score >= 40000)  unlockAchievement('score40k');
+  if (score >= 80000)  unlockAchievement('score80k');
+  if (stats.totalScore >= 100000)   unlockAchievement('score100k');
+  if (stats.totalScore >= 1000000)  unlockAchievement('millionScore');
+  if (stats.totalGames >= 100)  unlockAchievement('play100');
+  if (stats.totalGames >= 1000) unlockAchievement('trueVeteran');
+  if (stats.totalPlayTimeSec >= 86400) unlockAchievement('day24');
+  if (stats.totalMerges >= 10000) unlockAchievement('mergeMania');
+  if (elapsedSec >= 3600) {
+    unlockAchievement('turtle60');
+    stats.turtleHourCount = (stats.turtleHourCount || 0) + 1;
+    saveStats();
+    if (stats.turtleHourCount >= 3) unlockAchievement('turtleX3');
+  }
+  // 로그인 상태면 통계/프로필을 클라우드에 동기화 (기기 간 유지)
+  if (typeof RANK_USE_FIREBASE !== 'undefined' && RANK_USE_FIREBASE &&
+      RankingAPI.authInfo && RankingAPI.authInfo().signedIn) {
+    const p = loadProfile(); if (p && p.name) RankingAPI.saveCloudProfile(p).catch(() => {});
+  }
+  // 랭킹 등록 (저장된 프로필로) — 결과 반환
+  return submitCurrentScore();
+}
+
 function triggerGameOver() {
   isGameOver = true;
   // 게임오버 순간의 화면 상태를 그대로 동결 (어떤 공이 침범했는지 명확히 보이게)
@@ -3345,56 +3396,15 @@ function triggerGameOver() {
   gameOverOverlay.classList.add('show');
   sndGameOver();
   addShake(12);
-  // 통계 누적 (게임 종료 시점)
-  stats.totalGames++;
-  stats.totalScore += score;
-  // 플레이 시간 누적
-  const elapsedSec = Math.max(0, (performance.now() - _gameStartTime) / 1000);
-  stats.totalPlayTimeSec = (stats.totalPlayTimeSec || 0) + elapsedSec;
-  // 최장 콤보 갱신
-  if (_maxComboThisGame > (stats.maxComboEver || 0)) stats.maxComboEver = _maxComboThisGame;
-  // 신기록 갱신 카운트 (시작 시점 최고점을 초과한 경우에만)
-  if (isNewBest) stats.newBestCount = (stats.newBestCount || 0) + 1;
-  // 난이도별 통계
-  stats.bestByDiff = stats.bestByDiff || {};
-  stats.scoreSumByDiff = stats.scoreSumByDiff || {};
-  stats.attemptsByDiff = stats.attemptsByDiff || {};
-  stats.bestByDiff[currentDifficulty] = Math.max(stats.bestByDiff[currentDifficulty] || 0, score);
-  stats.scoreSumByDiff[currentDifficulty] = (stats.scoreSumByDiff[currentDifficulty] || 0) + score;
-  stats.attemptsByDiff[currentDifficulty] = (stats.attemptsByDiff[currentDifficulty] || 0) + 1;
-  // 헬 모드 경고 누적
-  if (currentDifficulty === 'hell') stats.hellWarningTotal = (stats.hellWarningTotal || 0) + hellWarnings;
-  // 마지막 플레이 날짜 (오늘 날짜, 로컬 시간대)
-  const today = localDateStr();
-  if (!stats.firstPlayDate) stats.firstPlayDate = today;
-  stats.lastPlayDate = today;
-  saveStats();
-  // 점수 업적
-  if (score >= 1000)   unlockAchievement('score1k');
-  if (score >= 10000)  unlockAchievement('score10k');
-  if (score >= 40000)  unlockAchievement('score40k');
-  if (score >= 80000)  unlockAchievement('score80k');
-  // 누적 점수 업적
-  if (stats.totalScore >= 100000)   unlockAchievement('score100k');
-  if (stats.totalScore >= 1000000)  unlockAchievement('millionScore');
-  // 백전노장: 100판 / 진정한 백전노장: 1000판
-  if (stats.totalGames >= 100)  unlockAchievement('play100');
-  if (stats.totalGames >= 1000) unlockAchievement('trueVeteran');
-  // 24시간: 누적 플레이 시간 86,400초
-  if (stats.totalPlayTimeSec >= 86400) unlockAchievement('day24');
-  // 합치기 마니아: 누적 합치기 10,000회
-  if (stats.totalMerges >= 10000) unlockAchievement('mergeMania');
-  // 거북이: 1시간 이상 한 게임 + 거북이×3 카운트
-  if (elapsedSec >= 3600) {
-    unlockAchievement('turtle60');
-    stats.turtleHourCount = (stats.turtleHourCount || 0) + 1;
-    saveStats();
-    if (stats.turtleHourCount >= 3) unlockAchievement('turtleX3');
-  }
-  // 첫 패배
+  // 첫 패배 (게임오버 전용)
   unlockAchievement('firstGameOver');
-  // 랭킹 자동 등록 (저장된 프로필로)
-  onGameOverSubmit();
+  // 한 판 정산 (통계 + 점수 업적 + 랭킹) — 판당 1회. 게임오버 화면에 결과 표시
+  finalizeRun().then(res => {
+    const rankEl = document.getElementById('gameoverRank');
+    if (!rankEl) return;
+    if (res && res.rank) { rankEl.textContent = `${rt('registered')} · ${rt('rankIs')(res.rank)}`; rankEl.style.display = 'block'; }
+    else rankEl.style.display = 'none';
+  });
 }
 
 // ---------------- 일시정지 ----------------
@@ -3572,6 +3582,7 @@ function resetGame() {
   resetHellDropTimer();
   isGameOver = false;
   isPaused = false;
+  _runFinalized = false;
   deadLineEnterTime = null;
   droppedBodies.clear();
   particles = [];
@@ -4232,7 +4243,11 @@ const clearMainBtn = document.getElementById('clearMainBtn');
 const clearContinueBtn = document.getElementById('clearContinueBtn');
 clearMainBtn.addEventListener('click', () => {
   closeModal(clearModalEl);
-  showStartScreen();
+  // 클리어 후 메인으로 나갈 때도 정산(통계+랭킹) — 누락 방지
+  finalizeRun().then(res => {
+    if (res && res.rank) showRankToast(`${rt('registered')} · ${rt('rankIs')(res.rank)}`);
+    showStartScreen();
+  });
 });
 clearContinueBtn.addEventListener('click', () => {
   closeModal(clearModalEl);
@@ -4241,8 +4256,8 @@ clearContinueBtn.addEventListener('click', () => {
 confirmMainBtn.addEventListener('click', () => {
   closeModal(confirmMainModal);
   closeModal(pauseModal);
-  // 현재 점수를 랭킹에 등록한 뒤 메인으로 이동 (점수 0이면 등록 스킵)
-  submitCurrentScore().then(res => {
+  // 메인으로 나갈 때 정산(통계+랭킹) 후 이동 (점수 0이면 스킵)
+  finalizeRun().then(res => {
     if (res && res.rank) showRankToast(`${rt('registered')} · ${rt('rankIs')(res.rank)}`);
     showStartScreen();
   });
@@ -4693,6 +4708,43 @@ function checkCabinetAchievements() {
   if (maxConsecutive(cab.filter(e => e.rank === 1).map(e => seasonOrder(e.season))) >= 3) unlockAchievement('seasonWin3');
 }
 
+// ---- 통계 병합 (로그인 시 클라우드 ↔ 로컬, 더 좋은 값 보존) ----
+function _mergeMaxMap(a, b) {
+  const out = {}; const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
+  for (const k of keys) out[k] = Math.max(Number(a && a[k]) || 0, Number(b && b[k]) || 0);
+  return out;
+}
+function _mergeMinMap(a, b) {
+  const out = {}; const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
+  for (const k of keys) {
+    const va = (a && a[k] != null) ? Number(a[k]) : Infinity;
+    const vb = (b && b[k] != null) ? Number(b[k]) : Infinity;
+    const m = Math.min(va, vb); if (isFinite(m)) out[k] = m;
+  }
+  return out;
+}
+function mergeStatsObjects(a, b) {
+  if (!a) return b || {}; if (!b) return a;
+  const out = Object.assign({}, a);
+  const maxKeys = ['totalGames','totalMerges','totalScore','maxTier','totalPlayTimeSec','maxComboEver',
+    'blackholeUseCount','consecutivePlayDays','deadlineEscapeCount','newBestCount','hellWarningTotal',
+    'uiToggleCount','silentClearCount','englishClearCount','koreanClearCount','turtleHourCount'];
+  for (const k of maxKeys) out[k] = Math.max(Number(a[k]) || 0, Number(b[k]) || 0);
+  out.achievements = Object.assign({}, a.achievements || {}, b.achievements || {}); // 업적 합집합
+  out.bestByDiff = _mergeMaxMap(a.bestByDiff, b.bestByDiff);
+  out.scoreSumByDiff = _mergeMaxMap(a.scoreSumByDiff, b.scoreSumByDiff);
+  out.attemptsByDiff = _mergeMaxMap(a.attemptsByDiff, b.attemptsByDiff);
+  out.tierReachCount = _mergeMaxMap(a.tierReachCount, b.tierReachCount);
+  out.cleared = _mergeMaxMap(a.cleared, b.cleared);
+  out.clearTimeBest = _mergeMinMap(a.clearTimeBest, b.clearTimeBest);   // 시간은 작을수록 좋음
+  out.clearMinMerges = _mergeMinMap(a.clearMinMerges, b.clearMinMerges);
+  const minD = (x, y) => !x ? y : !y ? x : (x < y ? x : y);
+  const maxD = (x, y) => !x ? y : !y ? x : (x > y ? x : y);
+  out.firstPlayDate = minD(a.firstPlayDate, b.firstPlayDate);
+  out.lastPlayDate = maxD(a.lastPlayDate, b.lastPlayDate);
+  return out;
+}
+
 // ---- 국가 목록 ----
 const RK_COUNTRIES = [
   { code: 'KR', flag: '🇰🇷', ko: '대한민국', en: 'South Korea' },
@@ -4989,6 +5041,7 @@ const RankingFirebase = {
       { name: profile.name, country: profile.country, school: profile.school || null,
         cabinet: (typeof loadCabinet === 'function') ? loadCabinet() : [],
         awarded: (typeof loadAwarded === 'function') ? loadAwarded() : {},
+        stats: (typeof stats !== 'undefined') ? stats : {},  // 업적·통계·티어 동기화
         updatedAt: Date.now() },
       { merge: true });
   },
@@ -5200,7 +5253,8 @@ async function onGoogleLogin() {
     }
     if (cloud && cloud.cabinet) saveCabinet(mergeCabinet(loadCabinet(), cloud.cabinet));
     if (cloud && cloud.awarded) { const a = loadAwarded(); Object.assign(a, cloud.awarded); saveAwarded(a); }
-    // 병합 결과(프로필+캐비넷)를 클라우드에 다시 업로드 → 양방향 동기화
+    if (cloud && cloud.stats) { stats = mergeStatsObjects(stats, cloud.stats); saveStats(); } // 업적·통계·티어 복원
+    // 병합 결과(프로필+캐비넷+통계)를 클라우드에 다시 업로드 → 양방향 동기화
     const merged = loadProfile();
     if (merged && merged.name) await RankingAPI.saveCloudProfile(merged);
     renderAccountSection();
@@ -5232,6 +5286,7 @@ async function rankingStartup() {
           }
           if (cloud.cabinet) saveCabinet(mergeCabinet(loadCabinet(), cloud.cabinet));
           if (cloud.awarded) { const a = loadAwarded(); Object.assign(a, cloud.awarded); saveAwarded(a); }
+          if (cloud.stats) { stats = mergeStatsObjects(stats, cloud.stats); saveStats(); refreshTierDisplays(); } // 업적·통계·티어 복원
         }
       }
     }
@@ -5509,10 +5564,13 @@ rankingStartup(); // 로그인 세션 복원 + 클라우드 프로필 동기화
 preloadAssets().then(() => {
   applyLangUI();
   applySoundUI();
-  resetGame();
-  // 초기엔 게임 일시정지 상태로 두기 (시작 화면에서)
-  stopPhysicsLoop();
-  isPaused = true;
+  // 에셋 로딩이 늦게 끝나는 사이 사용자가 이미 "시작하기"를 눌렀을 수 있다.
+  // 아직 시작 화면일 때만 초기 일시정지 셋업 (진행 중인 게임을 덮어쓰지 않도록 — 레이스 방지)
+  if (!startScreenEl.classList.contains('hidden')) {
+    resetGame();
+    stopPhysicsLoop();
+    isPaused = true;
+  }
   render();
   refreshTierDisplays(); // 초기 티어 표시
 
